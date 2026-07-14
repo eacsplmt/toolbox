@@ -1,0 +1,6 @@
+进入
+dgreadiness_v3.6
+右键打开管理员powershell
+# === 工具偷懒 ===
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
+powershell -ExecutionPolicy Bypass -File "DG_Readiness_Tool_v3.6.ps1" -Disable
