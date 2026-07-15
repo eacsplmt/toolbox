@@ -1,0 +1,250 @@
+#Requires -RunAsAdministrator
+
+Write-Host "开始优化..." -ForegroundColor Cyan
+
+# ============================================
+# 一、电源拉满
+# ============================================
+Write-Host "极致性能电源方案" -ForegroundColor Gray
+
+$perfLine = powercfg /l | Select-String -Pattern "卓越性能|Ultimate Performance"
+if ($perfLine) {
+    $guid = ($perfLine -split '\s+')[3]
+    powercfg -setactive $guid
+    Write-Host "  卓越性能已启用" -ForegroundColor Green
+} else {
+    Write-Host "  未找到卓越性能，添加并启用..." -ForegroundColor Yellow
+    $result = powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 2>&1
+    $perfLine = powercfg /l | Select-String -Pattern "卓越性能|Ultimate Performance"
+    if ($perfLine) {
+        $guid = ($perfLine -split '\s+')[3]
+        powercfg -setactive $guid
+        Write-Host "  卓越性能已启用" -ForegroundColor Green
+    } else {
+        Write-Host "  添加失败，手动检查" -ForegroundColor Red
+    }
+}
+
+Write-Host "显示器永不关闭" -ForegroundColor Gray
+powercfg -change -monitor-timeout-ac 0
+
+Write-Host "硬盘永不休眠" -ForegroundColor Gray
+powercfg -change -disk-timeout-ac 0
+
+Write-Host "系统永不休眠" -ForegroundColor Gray
+powercfg -change -standby-timeout-ac 0
+
+# ============================================
+# 二、远程桌面全开
+# ============================================
+Write-Host "远程桌面 + 网络改专用" -ForegroundColor Gray
+
+Get-NetConnectionProfile | Set-NetConnectionProfile -NetworkCategory Private -ErrorAction SilentlyContinue
+
+If (!(Test-Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services")) {
+    New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services" -Force | Out-Null
+}
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services" -Name "fDenyTSConnections" -Value 0 -Type DWord -Force
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services" -Name "UserAuthentication" -Value 0 -Type DWord -Force
+
+Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 0 -Type DWord -Force
+If (!(Test-Path "HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp")) {
+    New-Item -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -Force | Out-Null
+}
+Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -Name "UserAuthentication" -Value 0 -Type DWord -Force
+
+netsh advfirewall firewall set rule group="远程桌面" new enable=Yes 2>$null
+
+Set-Service TermService -StartupType Automatic -ErrorAction SilentlyContinue
+Start-Service TermService -ErrorAction SilentlyContinue
+
+Write-Host "  远程桌面已开，端口3389" -ForegroundColor Green
+
+# ============================================
+# 三、Windows Update 全禁
+# ============================================
+Write-Host "Windows Update 全禁" -ForegroundColor Gray
+
+If (!(Test-Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate")) {
+    New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate" -Force | Out-Null
+}
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate" -Name "ExcludeWUDriversInQualityUpdate" -Value 1 -Type DWord -Force
+
+If (!(Test-Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DriverSearching")) {
+    New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DriverSearching" -Force | Out-Null
+}
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DriverSearching" -Name "SearchOrderConfig" -Value 0 -Type DWord -Force
+
+If (!(Test-Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\AU")) {
+    New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\AU" -Force | Out-Null
+}
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\AU" -Name "AUOptions" -Value 2 -Type DWord -Force
+
+Set-Service wuauserv -StartupType Disabled -ErrorAction SilentlyContinue
+Stop-Service wuauserv -Force -ErrorAction SilentlyContinue
+
+Write-Host "  Windows Update 已掐死" -ForegroundColor Green
+
+# ============================================
+# 四、粘滞键/筛选键/切换键 永久禁用
+# ============================================
+Write-Host "禁用粘滞键/筛选键/切换键" -ForegroundColor Gray
+
+$path1 = "HKCU:\Control Panel\Accessibility\StickyKeys"
+if (!(Test-Path $path1)) { New-Item -Path $path1 -Force | Out-Null }
+Set-ItemProperty -Path $path1 -Name "Flags" -Value "506" -Type String
+
+$path2 = "HKCU:\Control Panel\Accessibility\ToggleKeys"
+if (!(Test-Path $path2)) { New-Item -Path $path2 -Force | Out-Null }
+Set-ItemProperty -Path $path2 -Name "Flags" -Value "58" -Type String
+
+$path3 = "HKCU:\Control Panel\Accessibility\FilterKeys"
+if (!(Test-Path $path3)) { New-Item -Path $path3 -Force | Out-Null }
+Set-ItemProperty -Path $path3 -Name "Flags" -Value "122" -Type String
+
+Write-Host "  粘滞键/筛选键/切换键 永久禁用" -ForegroundColor Green
+
+# ============================================
+# 五、隐私权限全开
+# ============================================
+Write-Host "麦克风权限开启" -ForegroundColor Gray
+Set-ItemProperty -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\microphone" -Name "Value" -Value "Allow" -ErrorAction SilentlyContinue
+
+Write-Host "摄像头权限开启" -ForegroundColor Gray
+Set-ItemProperty -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\camera" -Name "Value" -Value "Allow" -ErrorAction SilentlyContinue
+
+Write-Host "定位权限开启" -ForegroundColor Gray
+Set-ItemProperty -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location" -Name "Value" -Value "Allow" -ErrorAction SilentlyContinue
+
+# ============================================
+# 六、组策略掐死所有遥测与偷窥
+# ============================================
+Write-Host "组策略全面封杀遥测..." -ForegroundColor Gray
+
+If (!(Test-Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy")) {
+    New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy" -Force | Out-Null
+}
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy" -Name "LetAppsAccessCamera" -Value 2 -Type DWord -Force
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy" -Name "LetAppsAccessMicrophone" -Value 2 -Type DWord -Force
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy" -Name "LetAppsAccessAccountInfo" -Value 2 -Type DWord -Force
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy" -Name "LetAppsAccessContacts" -Value 2 -Type DWord -Force
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy" -Name "LetAppsAccessCallHistory" -Value 2 -Type DWord -Force
+
+If (!(Test-Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection")) {
+    New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection" -Force | Out-Null
+}
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection" -Name "AllowTelemetry" -Value 0 -Type DWord -Force
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection" -Name "AllowDeviceNameInTelemetry" -Value 0 -Type DWord -Force
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection" -Name "DoNotShowFeedbackNotifications" -Value 1 -Type DWord -Force
+
+If (!(Test-Path "HKCU:\SOFTWARE\Policies\Microsoft\Windows\DataCollection")) {
+    New-Item -Path "HKCU:\SOFTWARE\Policies\Microsoft\Windows\DataCollection" -Force | Out-Null
+}
+Set-ItemProperty -Path "HKCU:\SOFTWARE\Policies\Microsoft\Windows\DataCollection" -Name "AllowTelemetry" -Value 0 -Type DWord -Force
+
+If (!(Test-Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Search")) {
+    New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Search" -Force | Out-Null
+}
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Search" -Name "AllowCortana" -Value 0 -Type DWord -Force
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Search" -Name "AllowSearchToUseLocation" -Value 0 -Type DWord -Force
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Search" -Name "AllowCloudSearch" -Value 0 -Type DWord -Force
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Search" -Name "AllowCortanaAboveLock" -Value 0 -Type DWord -Force
+
+If (!(Test-Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System")) {
+    New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Force | Out-Null
+}
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name "PublishUserActivities" -Value 0 -Type DWord -Force
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name "UploadUserActivities" -Value 0 -Type DWord -Force
+
+If (!(Test-Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\AppCompat")) {
+    New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\AppCompat" -Force | Out-Null
+}
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\AppCompat" -Name "DisableUAR" -Value 1 -Type DWord -Force
+
+If (!(Test-Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo")) {
+    New-Item -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo" -Force | Out-Null
+}
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo" -Name "Enabled" -Value 0 -Type DWord -Force
+
+If (!(Test-Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo")) {
+    New-Item -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo" -Force | Out-Null
+}
+Set-ItemProperty -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo" -Name "Enabled" -Value 0 -Type DWord -Force
+
+Get-Service -Name DiagTrack -ErrorAction SilentlyContinue | Set-Service -StartupType Disabled
+Stop-Service -Name DiagTrack -Force -ErrorAction SilentlyContinue
+Get-Service -Name dmwappushservice -ErrorAction SilentlyContinue | Set-Service -StartupType Disabled
+Stop-Service -Name dmwappushservice -Force -ErrorAction SilentlyContinue
+
+Write-Host "  遥测/Cortana/活动历史/广告ID 全部掐死" -ForegroundColor Green
+
+# ============================================
+# 七、计划任务封杀
+# ============================================
+Write-Host "禁用遥测计划任务..." -ForegroundColor Gray
+
+$tasksToKill = @(
+    "\Microsoft\Windows\Application Experience\Microsoft Compatibility Appraiser",
+    "\Microsoft\Windows\Application Experience\ProgramDataUpdater",
+    "\Microsoft\Windows\Application Experience\StartupAppTask",
+    "\Microsoft\Windows\Customer Experience Improvement Program\Consolidator",
+    "\Microsoft\Windows\Customer Experience Improvement Program\KernelCeipTask",
+    "\Microsoft\Windows\Customer Experience Improvement Program\UsbCeip",
+    "\Microsoft\Windows\Windows Error Reporting\QueueReporting",
+    "\Microsoft\Windows\Feedback\Siuf\DmClient",
+    "\Microsoft\Windows\Feedback\Siuf\DmClientOnScenarioDownload",
+    "\Microsoft\Windows\DiskDiagnostic\Microsoft-Windows-DiskDiagnosticDataCollector"
+)
+
+foreach ($task in $tasksToKill) {
+    Disable-ScheduledTask -TaskName (Split-Path $task -Leaf) -TaskPath (Split-Path $task) -ErrorAction SilentlyContinue
+}
+
+Write-Host "  计划任务遥测已禁用" -ForegroundColor Green
+
+# ============================================
+# 八、桌面响应
+# ============================================
+Write-Host "菜单弹出加速" -ForegroundColor Gray
+Set-ItemProperty -Path "HKCU:\Control Panel\Desktop" -Name "MenuShowDelay" -Value 150
+
+Write-Host "程序无响应超时 2s" -ForegroundColor Gray
+Set-ItemProperty -Path "HKCU:\Control Panel\Desktop" -Name "HungAppTimeout" -Value 2000
+
+Write-Host "服务关闭超时 3s" -ForegroundColor Gray
+Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control" -Name "WaitToKillServiceTimeout" -Value 3000
+
+Write-Host "等待程序关闭 3s" -ForegroundColor Gray
+Set-ItemProperty -Path "HKCU:\Control Panel\Desktop" -Name "WaitToKillAppTimeout" -Value 3000
+
+Write-Host "自动结束无响应任务" -ForegroundColor Gray
+Set-ItemProperty -Path "HKCU:\Control Panel\Desktop" -Name "AutoEndTasks" -Value 1
+
+# ============================================
+# 九、文件系统
+# ============================================
+Write-Host "启用长路径支持" -ForegroundColor Gray
+Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Value 1
+
+# ============================================
+# 十、资源管理器
+# ============================================
+Write-Host "资源管理器→此电脑" -ForegroundColor Gray
+Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "LaunchTo" -Value 1
+
+Write-Host "显示文件扩展名" -ForegroundColor Gray
+Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "HideFileExt" -Value 0
+
+Write-Host "显示隐藏文件" -ForegroundColor Gray
+Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "Hidden" -Value 1
+
+# ============================================
+Write-Host ""
+Write-Host "================================================" -ForegroundColor Cyan
+Write-Host "  调优完成！" -ForegroundColor Green
+Write-Host "  远程桌面 : 3389 已开" -ForegroundColor Cyan
+Write-Host "  遥测 : 组策略+注册表+计划任务 三重掐死" -ForegroundColor Cyan
+Write-Host "  Windows Update : 已禁用" -ForegroundColor Cyan
+Write-Host "  粘滞键/筛选键/切换键 : 已永久禁用" -ForegroundColor Cyan
+Write-Host "  重要 : 账户必须有密码才能远程连接" -ForegroundColor Yellow
+Write-Host "================================================" -ForegroundColor Cyan
