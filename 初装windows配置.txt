@@ -1,0 +1,81 @@
+
+轻松创建 USB 启动盘
+https://rufus.ie/zh/
+潇然 PE，启动网络装机中心 备份用里面ATI CGI无网备选
+https://pe.xrgzs.top/
+
+注册windows 卡住可问deepseek要命令
+irm https://get.activated.win | iex
+
+ddu准备好 铲除显卡重装
+https://www.wagnardsoft.com/display-driver-uninstaller-ddu
+驱动精灵（流氓）淘宝花一块钱买个30分钟会员嫖几个小时用完删掉
+https://www.drivergenius.com/
+自己有办法找到驱动就用金舟没那么烂
+https://www.callmysoft.com/dll
+notepad++装一个
+360（流氓）下载安全卫士整理完了卸载掉，火绒装一个
+流氓工具能省不少事，搞完卸载就是
+下载真clash
+https://github.com/cfwtf/clash_for_windows/releases/tag/0.20.39
+
+去臃肿
+& ([scriptblock]::Create((irm "https://debloat.raphi.re/")))
+
+解压用7zip 
+rar用爱纯净的
+https://www.aichunjing.com/e/search/result/?searchid=352
+
+搜索工具用
+https://www.voidtools.com/zh-cn/
+卸载工具用
+BCUninstaller
+
+下面两条自己酌情，反正高手直接铲除不犹豫
+最后关闭windows自动更新 如果你不是独立显卡这个无所谓
+irm https://raw.githubusercontent.com/dawncopper/WUD/main/WUD.ps1 | iex
+铲除windows defender 如果你是电脑盲这个不需要
+https://github.com/ionuttbara/windows-defender-remover
+
+
+清理和删除垃圾用
+PrivaZer
+
+安装自定义office
+https://massgrave.dev/office_c2r_custom
+
+局域网内分享文件
+https://localsend.org/zh-CN
+其一键工具
+https://www.sordum.org/
+反遥测OOSU10
+https://www.oo-software.com/
+打一下dll
+https://www.callmysoft.com/dll
+安装java和.net环境
+https://www.oracle.com/java/technologies/downloads/#java25
+https://winlibs.com/
+winSDK和SQL自己看着办
+https://www.microsoft.com/zh-cn/sql-server/sql-server-downloads
+
+
+“应用和功能”卸载 Office360 。有残留一定要干掉不然装不上。
+如果去微软生成，点击导出按钮，选择“保留当前设置”选项，即可下载一个名为 . 的文件Configuration.xml。（如果文件名不同，请将其重命名为Configuration.xml）。
+只需配置“语言”部分之前的选项
+将下载的Configuration.xml文件复制到您创建的 Office 文件夹（例如，C:\Office\Configuration.xml）。
+
+以管理员身份打开cmd命令提示符，然后运行以下命令：
+cd /d C:\Office\
+setup.exe /configure Configuration.xml
+
+游戏用idm和playzip wand
+其他常用
+Sandboxie-Plus
+VMware Workstation Pro
+FastCopy
+WinAuth.exe
+SafeMode_x64.exe
+PowerRun_x64.exe
+替代品类
+GIMP v3.2.4 开源免费Photoshop替代品
+liberoffice
