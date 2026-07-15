@@ -105,7 +105,29 @@ Set-ItemProperty -Path $path3 -Name "Flags" -Value "122" -Type String
 Write-Host "  粘滞键/筛选键/切换键 永久禁用" -ForegroundColor Green
 
 # ============================================
-# 五、隐私权限全开
+# 五、系统还原 + 卷影复制 全干掉
+# ============================================
+Write-Host "干掉系统还原和卷影复制" -ForegroundColor Gray
+
+# 注册表禁用系统还原
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore" -Name "RPSessionInterval" -Value 0 -Type DWord -Force
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore" -Name "DisableSR" -Value 1 -Type DWord -Force
+
+# 禁用系统还原服务
+Stop-Service -Name "srservice" -Force -ErrorAction SilentlyContinue
+Set-Service -Name "srservice" -StartupType Disabled -ErrorAction SilentlyContinue
+
+# 禁用卷影复制服务
+Stop-Service -Name "VSS" -Force -ErrorAction SilentlyContinue
+Set-Service -Name "VSS" -StartupType Disabled -ErrorAction SilentlyContinue
+
+# 禁用系统还原计划任务
+schtasks /Change /TN "Microsoft\Windows\SystemRestore\SR" /Disable 2>$null
+
+Write-Host "  系统还原/卷影复制 已彻底干掉" -ForegroundColor Green
+
+# ============================================
+# 六、隐私权限全开
 # ============================================
 Write-Host "麦克风权限开启" -ForegroundColor Gray
 Set-ItemProperty -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\microphone" -Name "Value" -Value "Allow" -ErrorAction SilentlyContinue
@@ -117,7 +139,7 @@ Write-Host "定位权限开启" -ForegroundColor Gray
 Set-ItemProperty -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location" -Name "Value" -Value "Allow" -ErrorAction SilentlyContinue
 
 # ============================================
-# 六、组策略掐死所有遥测与偷窥
+# 七、组策略掐死所有遥测与偷窥
 # ============================================
 Write-Host "组策略全面封杀遥测..." -ForegroundColor Gray
 
@@ -179,7 +201,7 @@ Stop-Service -Name dmwappushservice -Force -ErrorAction SilentlyContinue
 Write-Host "  遥测/Cortana/活动历史/广告ID 全部掐死" -ForegroundColor Green
 
 # ============================================
-# 七、计划任务封杀
+# 八、计划任务封杀
 # ============================================
 Write-Host "禁用遥测计划任务..." -ForegroundColor Gray
 
@@ -193,17 +215,18 @@ $tasksToKill = @(
     "\Microsoft\Windows\Windows Error Reporting\QueueReporting",
     "\Microsoft\Windows\Feedback\Siuf\DmClient",
     "\Microsoft\Windows\Feedback\Siuf\DmClientOnScenarioDownload",
-    "\Microsoft\Windows\DiskDiagnostic\Microsoft-Windows-DiskDiagnosticDataCollector"
+    "\Microsoft\Windows\DiskDiagnostic\Microsoft-Windows-DiskDiagnosticDataCollector",
+    "\Microsoft\Windows\SystemRestore\SR"
 )
 
 foreach ($task in $tasksToKill) {
     Disable-ScheduledTask -TaskName (Split-Path $task -Leaf) -TaskPath (Split-Path $task) -ErrorAction SilentlyContinue
 }
 
-Write-Host "  计划任务遥测已禁用" -ForegroundColor Green
+Write-Host "  计划任务已禁用" -ForegroundColor Green
 
 # ============================================
-# 八、桌面响应
+# 九、桌面响应
 # ============================================
 Write-Host "菜单弹出加速" -ForegroundColor Gray
 Set-ItemProperty -Path "HKCU:\Control Panel\Desktop" -Name "MenuShowDelay" -Value 150
@@ -221,13 +244,13 @@ Write-Host "自动结束无响应任务" -ForegroundColor Gray
 Set-ItemProperty -Path "HKCU:\Control Panel\Desktop" -Name "AutoEndTasks" -Value 1
 
 # ============================================
-# 九、文件系统
+# 十、文件系统
 # ============================================
 Write-Host "启用长路径支持" -ForegroundColor Gray
 Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Value 1
 
 # ============================================
-# 十、资源管理器
+# 十一、资源管理器
 # ============================================
 Write-Host "资源管理器→此电脑" -ForegroundColor Gray
 Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "LaunchTo" -Value 1
@@ -246,5 +269,6 @@ Write-Host "  远程桌面 : 3389 已开" -ForegroundColor Cyan
 Write-Host "  遥测 : 组策略+注册表+计划任务 三重掐死" -ForegroundColor Cyan
 Write-Host "  Windows Update : 已禁用" -ForegroundColor Cyan
 Write-Host "  粘滞键/筛选键/切换键 : 已永久禁用" -ForegroundColor Cyan
+Write-Host "  系统还原/卷影复制 : 已彻底干掉" -ForegroundColor Cyan
 Write-Host "  重要 : 账户必须有密码才能远程连接" -ForegroundColor Yellow
 Write-Host "================================================" -ForegroundColor Cyan
